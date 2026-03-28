@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资源分享平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+
+        /* 顶部加载条 */
+        .load-bar{
+            position: fixed;
+            top:0;left:0;width:100%;height:4px;background:#eee;z-index:9999;overflow:hidden;
+            display:none;
+        }
+        .load-bar-inner{
+            height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#7c3aed);
+            animation:loadLine 2s linear forwards;
+        }
+        @keyframes loadLine{
+            0%{width:0%;}
+            100%{width:100%;}
+        }
+
+        /* 随机卡密弹窗加载动画 */
+        .rand-card-modal{
+            position: fixed;top:0;left:0;width:100%;height:100%;
+            background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);
+            display:none;align-items:center;justify-content:center;z-index:3000;
+        }
+        .rand-card-box{
+            width:90%;max-width:360px;background:#fff;border-radius:20px;padding:30px;text-align:center;
+        }
+        .loading-circle{
+            width:50px;height:50px;border:4px solid #e5e7eb;
+            border-top-color:#2563eb;border-radius:50%;margin:0 auto 20px;
+            animation:circleSpin 1s linear infinite;
+        }
+        @keyframes circleSpin{
+            to{transform:rotate(360deg);}
+        }
+        .rand-code-text{
+            font-size:18px;color:#1e293b;margin:12px 0;font-weight:bold;
+            word-break:break-all;
+        }
+        .countdown-tip{
+            font-size:14px;color:#64748b;margin-top:16px;
+        }
+
+        /* 新标签页跳转过渡动画弹窗 */
+        .jump-modal{
+            position:fixed;top:0;left:0;width:100%;height:100%;
+            background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;
+            z-index:4000;color:#fff;font-size:18px;text-align:center;
+            animation:fadeIn 0.3s;
+        }
+        .jump-box{
+            background:#fff;border-radius:16px;padding:40px;color:#222;
+            max-width:320px;width:90%;
+        }
+        .jump-icon{
+            width:48px;height:48px;margin:0 auto 16px;
+            border:4px solid #ff4d94;border-top:transparent solid;
+            border-radius:50%;animation:circleSpin 1s infinite linear;
+        }
+        @keyframes fadeIn{
+            from{opacity:0;}to{opacity:1;}
+        }
+
+        /* 背景优化 */
+        body {
+            min-height:100vh;overflow-x:hidden;background:#0f172a;
+        }
+        .bg-animation {
+            position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;
+        }
+        .bg-gradient {
+            position:absolute;width:200%;height:200%;top:-50%;left:-50%;
+            background:radial-gradient(circle at 20% 50%,rgba(37,99,235,0.2) 0%,transparent 50%),
+                        radial-gradient(circle at 80% 80%,rgba(124,58,237,0.2) 0%,transparent 50%);
+            animation:bgFlow 18s linear infinite;
+        }
+        @keyframes bgFlow {
+            0%{transform:rotate(0deg) scale(1);}
+            50%{transform:rotate(180deg) scale(1.2);}
+            100%{transform:rotate(360deg) scale(1);}
+        }
+        .bg-particles{display:none;}
+
+        /* 页面动画 */
+        .page {
+            display:none;animation:pageIn 0.4s ease-out;
+        }
+        .active-page {
+            display:block;
+        }
+        @keyframes pageIn {
+            from{opacity:0;transform:translateY(20px);}
+            to{opacity:1;transform:translateY(0);}
+        }
+
+        /* 导航 */
+        .nav {
+            width:100%;height:70px;background:rgba(37,99,235,0.85);backdrop-filter:blur(10px);
+            position:fixed;top:4px;left:0;z-index:998;
+        }
+        .nav-con {
+            width:90%;max-width:1200px;height:100%;margin:0 auto;
+            display:flex;align-items:center;justify-content:space-between;
+        }
+        .logo {
+            color:#fff;font-size:24px;font-weight:bold;
+        }
+        .nav-btn a {
+            color:#fff;text-decoration:none;margin:0 14px;font-size:16px;
+        }
+        .nav-btn button {
+            padding:9px 18px;border:none;border-radius:7px;margin:0 6px;cursor:pointer;
+        }
+        .login-btn {
+            background:rgba(255,255,255,0.92);color:#2563eb;
+        }
+        .reg-btn {
+            background:rgba(29,78,216,0.92);color:#fff;
+        }
+        .user-info {
+            color:#fff;display:none;
+        }
+        .vip-tag {
+            background:linear-gradient(90deg,#fbbf24,#f59e0b);
+            color:#fff;padding:3px 9px;border-radius:14px;font-size:12px;margin-left:9px;
+        }
+        .svip-tag {
+            background:linear-gradient(90deg,#ff4d94,#ff944d);background-size:200% 200%;
+            color:#fff;padding:4px 10px;border-radius:14px;font-size:12px;margin-left:9px;font-weight:bold;
+            animation:svipMove 1.5s infinite alternate;
+        }
+        @keyframes svipMove{
+            0%{background-position:0% 50%;}
+            100%{background-position:100% 50%;}
+        }
+
+        /* 弹窗 */
+        .modal {
+            position:fixed;top:0;left:0;width:100%;height:100%;
+            background:rgba(0,0,0,0.65);display:none;align-items:center;justify-content:center;z-index:1000;
+        }
+        .modal-box {
+            width:90%;max-width:400px;background:#fff;border-radius:18px;padding:32px;
+        }
+        .modal h3 {
+            text-align:center;margin-bottom:22px;font-size:23px;color:#1e293b;
+        }
+        .close {
+            float:right;cursor:pointer;font-size:21px;color:#64748b;
+        }
+        input {
+            width:100%;height:46px;margin:13px 0;padding:0 16px;border:1px solid #e2e8f0;border-radius:9px;outline:none;
+        }
+        .sub-btn {
+            width:100%;height:49px;background:linear-gradient(90deg,#2563eb,#7c3aed);
+            color:#fff;border:none;border-radius:9px;font-size:16px;cursor:pointer;margin-top:12px;
+        }
+        .tip {
+            text-align:center;margin-top:16px;font-size:14px;color:#64748b;
+        }
+        .tip a {
+            color:#2563eb;text-decoration:none;
+        }
+
+        /* 主体 */
+        .main {
+            margin-top:105px;width:90%;max-width:1200px;margin-left:auto;margin-right:auto;padding-bottom:55px;
+        }
+
+        /* 首页 */
+        .home-banner {
+            width:100%;background:linear-gradient(135deg,rgba(37,99,235,0.85),rgba(124,58,237,0.85));
+            border-radius:22px;padding:65px 32px;color:#fff;text-align:center;margin-bottom:45px;
+        }
+        .home-banner h2 {
+            font-size:38px;margin-bottom:16px;
+        }
+        .home-banner p {
+            font-size:19px;opacity:0.92;margin-bottom:32px;
+        }
+        .get-btn {
+            padding:17px 45px;font-size:21px;background:#fff;color:#2563eb;
+            border:none;border-radius:55px;font-weight:bold;cursor:pointer;
+        }
+        .get-btn.svip {
+            background:linear-gradient(90deg,#ff4d94,#ff944d);color:#fff;margin-left:15px;
+        }
+        .no-vip-tip {
+            background:rgba(220,38,38,0.92);color:#fff;padding:16px;border-radius:10px;margin-top:22px;
+            font-size:16px;display:none;
+        }
+        .no-vip-tip.svip-tip {
+            background:linear-gradient(90deg,#ff4d94,#ff944d);
+        }
+        .iframe-box {
+            width:100%;height:620px;border:2px solid rgba(255,255,255,0.12);
+            border-radius:18px;margin-top:32px;display:none;background:#fff;
+        }
+
+        /* 个人中心 */
+        .profile-box {
+            background:#fff;border-radius:22px;padding:32px;margin-bottom:32px;
+        }
+        .profile-box h3 {
+            font-size:23px;margin-bottom:22px;border-bottom:1px solid #e2e8f0;padding-bottom:11px;
+        }
+        .info-item {
+            font-size:17px;margin:13px 0;color:#334155;
+        }
+        .vip-active {
+            color:#10b981;font-weight:bold;
+        }
+        .svip-active {
+            background:linear-gradient(90deg,#ff4d94,#ff944d);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:bold;
+        }
+        .vip-inactive {
+            color:#ef4444;
+        }
+        .card-input {
+            width:100%;height:49px;padding:0 16px;border:1px solid #e2e8f0;border-radius:9px;margin:16px 0;font-size:16px;
+        }
+        .exchange-btn {
+            background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;border:none;padding:13px 32px;border-radius:9px;font-size:16px;cursor:pointer;
+        }
+        .exchange-btn.svip {
+            background:linear-gradient(90deg,#ff4d94,#ff944d);
+        }
+        .qq-btn {
+            background:linear-gradient(90deg,#12b7f5,#0ea5e9);color:#fff;border:none;padding:13px 32px;border-radius:9px;font-size:16px;cursor:pointer;margin-top:16px;
+        }
+
+        /* QQ跳转弹窗 */
+        .qq-modal {
+            position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);
+            display:none;align-items:center;justify-content:center;z-index:2000;
+        }
+        .qq-modal-box {
+            width:90%;max-width:350px;background:#fff;border-radius:20px;padding:30px;text-align:center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部加载 -->
+<div class="load-bar" id="topLoad"><div class="load-bar-inner"></div></div>
+
+<!-- 卡密弹窗 -->
+<div class="rand-card-modal" id="randCardModal">
+    <div class="rand-card-box">
+        <div class="loading-circle"></div>
+        <div>已随机发放卡密</div>
+        <div class="rand-code-text" id="showRandCode"></div>
+        <div class="countdown-tip" id="countdownTip">5秒后自动跳转QQ...</div>
+    </div>
+</div>
+
+<!-- SVIP新标签页跳转过渡动画 -->
+<div class="jump-modal" id="jumpModal">
+    <div class="jump-box">
+        <div class="jump-icon"></div>
+        <p>正在打开 SVIP 专属资源</p>
+        <p style="font-size:14px;color:#666;margin-top:8px;">即将跳转新标签页...</p>
+    </div>
+</div>
+
+<!-- 背景 -->
+<div class="bg-animation"><div class="bg-gradient"></div><div class="bg-particles" id="particles"></div></div>
+
+<!-- 导航 -->
+<div class="nav">
+    <div class="nav-con">
+        <div class="logo">资源分享站</div>
+        <div class="nav-btn">
+            <a href="javascript:goPage('home')">首页</a>
+            <a href="javascript:checkLoginToProfile()">个人中心</a>
+            <span id="unlogin">
+                <button class="login-btn" onclick="openLogin()">登录</button>
+                <button class="reg-btn" onclick="openReg()">注册</button>
+            </span>
+            <span id="logined" class="user-info">
+                欢迎：<span id="showUser"></span>
+                <span id="showVip" class="vip-tag" style="display:none;">VIP会员</span>
+                <span id="showSvip" class="svip-tag" style="display:none;">SVIP会员</span>
+                <button onclick="logout()" style="margin-left:10px;padding:6px 11px;background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:7px;cursor:pointer;">退出</button>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- 登录 -->
+<div class="modal" id="loginModal">
+    <div class="modal-box">
+        <span class="close" onclick="closeLogin()">×</span>
+        <h3>账号登录</h3>
+        <input type="text" id="loginUser" placeholder="用户名">
+        <input type="password" id="loginPwd" placeholder="密码">
+        <button class="sub-btn" onclick="doLogin()">登录</button>
+        <div class="tip">没有账号？<a href="javascript:switchToReg()">注册</a></div>
+    </div>
+</div>
+
+<!-- 注册 -->
+<div class="modal" id="regModal">
+    <div class="modal-box">
+        <span class="close" onclick="closeReg()">×</span>
+        <h3>账号注册</h3>
+        <input type="text" id="regUser" placeholder="用户名">
+        <input type="password" id="regPwd" placeholder="密码">
+        <input type="password" id="regPwd2" placeholder="确认密码">
+        <button class="sub-btn" onclick="doReg()">注册</button>
+        <div class="tip">已有账号？<a href="javascript:switchToLogin()">登录</a></div>
+    </div>
+</div>
+
+<!-- QQ跳转提示 -->
+<div class="qq-modal" id="qqModal">
+    <div class="qq-modal-box">
+        <p>正在打开QQ...</p>
+        <p style="font-size:14px;color:#666;">未跳转请在手机浏览器打开</p>
+    </div>
+</div>
+
+<!-- 页面主体 -->
+<div class="main">
+    <div class="page active-page" id="homePage">
+        <div class="home-banner">
+            <h2>优质软件资源分享平台</h2>
+            <p>VIP / SVIP 专属权限</p>
+            <button class="get-btn" onclick="checkVipAndOpenSource()">VIP 资源获取</button>
+            <button class="get-btn svip" onclick="checkSvipAndJumpNewTab()">SVIP 专属资源</button>
+            <div id="vipTip" class="no-vip-tip">请开通VIP访问</div>
+            <div id="svipTip" class="no-vip-tip svip-tip">SVIP 专属资源</div>
+        </div>
+
+        <h3 style="font-size:24px;margin:32px 0 16px;color:#fff;">VIP 资源</h3>
+        <iframe id="sourceIframe" class="iframe-box" src="https://vjctv.top/"></iframe>
+
+        <h3 style="font-size:24px;margin:50px 0 16px;color:#fff;">SVIP 资源（新标签页）</h3>
+        <div style="color:#fff;font-size:16px;margin-bottom:12px;">点击上方按钮打开新页面</div>
+    </div>
+
+    <div class="page" id="profilePage">
+        <div class="profile-box">
+            <h3>👤 账号信息</h3>
+            <div class="info-item">用户名：<span id="proUserName"></span></div>
+            <div class="info-item">会员状态：<span id="proVipStatus"></span></div>
+            <div class="info-item">到期时间：<span id="proVipEndTime"></span></div>
+        </div>
+
+        <div class="profile-box">
+            <h3>🎫 VIP 卡密兑换</h3>
+            <input class="card-input" id="cardCode" placeholder="输入VIP卡密">
+            <button class="exchange-btn" onclick="exchangeVipCard()">兑换 VIP</button>
+        </div>
+
+        <div class="profile-box">
+            <h3>⭐ SVIP 永久会员</h3>
+            <input class="card-input" id="svipCardCode" placeholder="输入SVIP卡密">
+            <button class="exchange-btn svip" onclick="exchangeSvipCard()">兑换 SVIP</button>
+            <br>
+            <button class="qq-btn" onclick="showRandCardAndJump()">获取卡密（跳转QQ）</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 卡密库
+const cardList = [
+    {id:1,code:"7s9K2pG5z8"},{id:2,code:"a3F7dR2x9Q"},{id:3,code:"T8bN4mC6e2"},
+    {id:4,code:"g5H1jV7wP3"},{id:5,code:"Z2kY6qD8r4"},{id:6,code:"c9A3sF5nG7"},
+    {id:7,code:"B4uE8tJ2h6"},{id:8,code:"L7pS2dK9f1"},{id:9,code:"w5M3gR7bX8"},
+    {id:10,code:"N2vC6zH4q9"}
+];
+const svipCardList = [
+    {id:1,code:"Svip8x9Z2kP7"},
+    {id:2,code:"Svip5aS7dF3g"}
+];
+const usedCardKey = "usedCardData";
+
+function initUsedCard(){
+    if(!localStorage.getItem(usedCardKey)) localStorage.setItem(usedCardKey,JSON.stringify([]));
+}
+
+const userKey = "resUserList";
+const nowLoginKey = "resNowLogin";
+
+window.onload = function(){
+    initUsedCard();
+    checkNowLogin();
+};
+
+// 弹窗
+function openLogin(){document.getElementById("loginModal").style.display="flex"}
+function closeLogin(){document.getElementById("loginModal").style.display="none"}
+function openReg(){document.getElementById("regModal").style.display="flex"}
+function closeReg(){document.getElementById("regModal").style.display="none"}
+function switchToReg(){closeLogin();openReg()}
+function switchToLogin(){closeReg();openLogin()}
+
+// 注册
+function doReg(){
+    let u = document.getElementById("regUser").value.trim();
+    let p = document.getElementById("regPwd").value.trim();
+    let p2 = document.getElementById("regPwd2").value.trim();
+    if(!u||!p||!p2){alert("请填写完整");return}
+    if(p!==p2){alert("两次密码不一致");return}
+    let list = JSON.parse(localStorage.getItem(userKey)||"[]");
+    if(list.find(x=>x.user===u)){alert("用户名已存在");return}
+    list.push({user:u,pwd:p,vip:false,svip:false,vipEnd:0});
+    localStorage.setItem(userKey,JSON.stringify(list));
+    alert("注册成功！");closeReg();openLogin();
+}
+
+// 登录
+function doLogin(){
+    let u = document.getElementById("loginUser").value.trim();
+    let p = document.getElementById("loginPwd").value.trim();
+    let list = JSON.parse(localStorage.getItem(userKey)||"[]");
+    let obj = list.find(x=>x.user===u&&x.pwd===p);
+    if(!obj){alert("账号或密码错误");return}
+    if(obj.vip && !obj.svip && obj.vipEnd<Date.now()){
+        obj.vip=false;obj.vipEnd=0;
+        let i=list.findIndex(x=>x.user===u);list[i]=obj;
+        localStorage.setItem(userKey,JSON.stringify(list));
+    }
+    localStorage.setItem(nowLoginKey,JSON.stringify(obj));
+    checkNowLogin();closeLogin();alert("登录成功");goPage("home");
+}
+
+// 登录状态
+function checkNowLogin(){
+    let now = localStorage.getItem(nowLoginKey);
+    if(now){
+        let d=JSON.parse(now);
+        document.getElementById("unlogin").style.display="none";
+        document.getElementById("logined").style.display="inline-block";
+        document.getElementById("showUser").innerText=d.user;
+        document.getElementById("showVip").style.display=(d.vip&&!d.svip&&d.vipEnd>Date.now())?"inline-block":"none";
+        document.getElementById("showSvip").style.display=d.svip?"inline-block":"none";
+    }else{
+        document.getElementById("unlogin").style.display="inline-block";
+        document.getElementById("logined").style.display="none";
+    }
+}
+
+// 退出
+function logout(){localStorage.removeItem(nowLoginKey);checkNowLogin();goPage("home");alert("已退出")}
+
+// 页面切换
+function goPage(n){
+    document.querySelectorAll(".page").forEach(i=>i.classList.remove("active-page"));
+    setTimeout(()=>{
+        if(n==="home")document.getElementById("homePage").classList.add("active-page");
+        if(n==="profile")document.getElementById("profilePage").classList.add("active-page");
+        window.scrollTo({top:0,behavior:'smooth'});
+    },100);
+}
+
+// 未登录拦截
+function checkLoginToProfile(){
+    if(!localStorage.getItem(nowLoginKey)){alert("请先登录");openLogin();return}
+    goPage("profile");
+}
+
+// VIP资源
+function checkVipAndOpenSource(){
+    let u=localStorage.getItem(nowLoginKey);
+    if(!u){alert("请登录");openLogin();return}
+    let d=JSON.parse(u);
+    let t=Date.now();
+    if(!d.svip && (!d.vip||d.vipEnd<=t)){
+        document.getElementById("vipTip").style.display="block";
+        document.getElementById("sourceIframe").style.display="none";
+        alert("请开通VIP");return;
+    }
+    let l=document.getElementById("topLoad");l.style.display="block";
+    setTimeout(()=>{
+        document.getElementById("sourceIframe").style.display="block";
+        document.getElementById("vipTip").style.display="none";
+        l.style.display="none";
+        alert("VIP 资源加载成功");
+    },1500);
+}
+
+// SVIP → 新标签页跳转 + 过渡动画
+function checkSvipAndJumpNewTab(){
+    let u=localStorage.getItem(nowLoginKey);
+    if(!u){alert("请登录");openLogin();return}
+    let d=JSON.parse(u);
+    if(!d.svip){
+        document.getElementById("svipTip").style.display="block";
+        alert("SVIP 专属权限");return;
+    }
+    // 跳转动画
+    let j=document.getElementById("jumpModal");
+    j.style.display="flex";
+    setTimeout(()=>{
+        window.open("https://www.jmcomic3.cn/software","_blank");
+        setTimeout(()=>{j.style.display="none";},800);
+    },1200);
+}
+
+// 刷新个人中心
+function refreshProfile(){
+    let n=JSON.parse(localStorage.getItem(nowLoginKey));
+    document.getElementById("proUserName").innerText=n.user;
+    let t=Date.now();
+    if(n.svip){
+        document.getElementById("proVipStatus").innerHTML='<span class="svip-active">SVIP永久会员</span>';
+        document.getElementById("proVipEndTime").innerText="永久有效";
+    }else if(n.vip && n.vipEnd>t){
+        document.getElementById("proVipStatus").innerHTML='<span class="vip-active">VIP会员</span>';
+        document.getElementById("proVipEndTime").innerText=new Date(n.vipEnd).toLocaleString();
+    }else{
+        document.getElementById("proVipStatus").innerHTML='<span class="vip-inactive">未开通</span>';
+        document.getElementById("proVipEndTime").innerText="无";
+    }
+}
+
+let oldGoPage=goPage;
+goPage=function(n){oldGoPage(n);if(n==="profile")setTimeout(refreshProfile,100)}
+
+// VIP兑换
+function exchangeVipCard(){
+    let c=document.getElementById("cardCode").value.trim();
+    if(!c){alert("请输入卡密");return}
+    let f=cardList.find(x=>x.code===c);
+    if(!f){alert("卡密错误");return}
+    let u=JSON.parse(localStorage.getItem(nowLoginKey));
+    if(u.svip){alert("已是SVIP");return}
+    let used=JSON.parse(localStorage.getItem(usedCardKey));
+    if(used.includes(c)){alert("卡密已使用");return}
+    let all=JSON.parse(localStorage.getItem(userKey));
+    let i=all.findIndex(x=>x.user===u.user);
+    all[i].vip=true;all[i].vipEnd=Date.now()+3153600000;
+    localStorage.setItem(userKey,JSON.stringify(all));
+    localStorage.setItem(nowLoginKey,JSON.stringify(all[i]));
+    used.push(c);localStorage.setItem(usedCardKey,JSON.stringify(used));
+    checkNowLogin();refreshProfile();document.getElementById("cardCode").value="";
+    alert("VIP兑换成功！1年");
+}
+
+// SVIP兑换
+function exchangeSvipCard(){
+    let c=document.getElementById("svipCardCode").value.trim();
+    if(!c){alert("请输入SVIP卡密");return}
+    let f=svipCardList.find(x=>x.code===c);
+    if(!f){alert("SVIP卡密错误");return}
+    let used=JSON.parse(localStorage.getItem(usedCardKey));
+    if(used.includes(c)){alert("卡密已使用");return}
+    let u=JSON.parse(localStorage.getItem(nowLoginKey));
+    let all=JSON.parse(localStorage.getItem(userKey));
+    let i=all.findIndex(x=>x.user===u.user);
+    all[i].svip=true;all[i].vip=true;all[i].vipEnd=Date.now()+9999999999999;
+    localStorage.setItem(userKey,JSON.stringify(all));
+    localStorage.setItem(nowLoginKey,JSON.stringify(all[i]));
+    used.push(c);localStorage.setItem(usedCardKey,JSON.stringify(used));
+    checkNowLogin();refreshProfile();document.getElementById("svipCardCode").value="";
+    alert("SVIP永久会员兑换成功！");
+}
+
+// 随机卡密+5秒跳转QQ
+function showRandCardAndJump(){
+    let allCard = [...cardList,...svipCardList];
+    let r = Math.floor(Math.random()*allCard.length);
+    let sel = allCard[r];
+    let txt = `序号${sel.id}：${sel.code}`;
+    let m=document.getElementById("randCardModal");
+    document.getElementById("showRandCode").innerText=txt;
+    m.style.display="flex";
+    let cnt=5;
+    let tip=document.getElementById("countdownTip");
+    let timer=setInterval(()=>{
+        cnt--;tip.innerText=`${cnt}秒后跳转QQ`;
+        if(cnt<=0){
+            clearInterval(timer);m.style.display="none";
+            let qm=document.getElementById("qqModal");qm.style.display="flex";
+            setTimeout(()=>{window.location.href="mqq://card/show_pslcard?uin=1020276057"},300);
+            setTimeout(()=>{qm.style.display="none"},4000);
+        }
+    },1000);
+}
+</script>
+</body>
+</html>
