@@ -380,7 +380,7 @@
 // ========== Supabase 初始化 ==========
 // 替换为你的 Supabase URL 和 anon key
 const supabaseUrl = 'https://azprksjonveqyhagouoy.supabase.co';
-const supabaseKey = 'sb_publishable_wz7--1zea6sSboz7r68VHg_c1FLC893';
+const supabaseKey = 'sb_publishable_wz7--1zea6sSboz7r68VHg_c1FLC893'; // 替换为真实的anon key
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // 卡密库
@@ -406,6 +406,8 @@ const nowLoginKey = "resNowLogin";
 window.onload = function(){
     initUsedCard();
     checkNowLogin();
+    // 初始化个人中心信息
+    initProfileInfo();
 };
 
 // 弹窗
@@ -478,7 +480,11 @@ function doLogin(){
         localStorage.setItem(userKey,JSON.stringify(list));
     }
     localStorage.setItem(nowLoginKey,JSON.stringify(obj));
-    checkNowLogin();closeLogin();alert("登录成功");goPage("home");
+    checkNowLogin();
+    initProfileInfo(); // 登录后初始化个人中心
+    closeLogin();
+    alert("登录成功");
+    goPage("home");
 }
 
 // 登录状态
@@ -497,15 +503,43 @@ function checkNowLogin(){
     }
 }
 
+// 初始化个人中心信息
+function initProfileInfo(){
+    let now = localStorage.getItem(nowLoginKey);
+    if(!now) return;
+    let d = JSON.parse(now);
+    document.getElementById("proUserName").innerText = d.user;
+    
+    // 会员状态显示
+    if(d.svip){
+        document.getElementById("proVipStatus").innerHTML = '<span class="svip-active">SVIP永久会员</span>';
+        document.getElementById("proVipEndTime").innerText = "永久有效";
+    }else if(d.vip && d.vipEnd > Date.now()){
+        document.getElementById("proVipStatus").innerHTML = '<span class="vip-active">VIP会员</span>';
+        document.getElementById("proVipEndTime").innerText = new Date(d.vipEnd).toLocaleString();
+    }else{
+        document.getElementById("proVipStatus").innerHTML = '<span class="vip-inactive">非会员</span>';
+        document.getElementById("proVipEndTime").innerText = "无";
+    }
+}
+
 // 退出
-function logout(){localStorage.removeItem(nowLoginKey);checkNowLogin();goPage("home");alert("已退出")}
+function logout(){
+    localStorage.removeItem(nowLoginKey);
+    checkNowLogin();
+    goPage("home");
+    alert("已退出");
+}
 
 // 页面切换
 function goPage(n){
     document.querySelectorAll(".page").forEach(i=>i.classList.remove("active-page"));
     setTimeout(()=>{
         if(n==="home")document.getElementById("homePage").classList.add("active-page");
-        if(n==="profile")document.getElementById("profilePage").classList.add("active-page");
+        if(n==="profile"){
+            document.getElementById("profilePage").classList.add("active-page");
+            initProfileInfo(); // 切换到个人中心时刷新信息
+        }
         window.scrollTo({top:0,behavior:'smooth'});
     },100);
 }
@@ -549,16 +583,18 @@ function checkSvipAndJumpNewTab(){
     let j=document.getElementById("jumpModal");
     j.style.display="flex";
     setTimeout(()=>{
-        // 此处补充原代码截断的逻辑，保持结构完整
         j.style.display="none";
-        window.open("https://你的SVIP专属链接.com", "_blank");
+        window.open("https://你的SVIP专属链接.com", "_blank"); // 替换为真实的SVIP链接
     }, 1500);
 }
 
-// 补充原代码截断的剩余函数（保证代码完整性）
+// VIP卡密兑换
 function exchangeVipCard() {
-    // 原逻辑保持不变（如需同步Supabase可自行扩展）
     let code = document.getElementById("cardCode").value.trim();
+    if(!code){
+        alert("请输入卡密");
+        return;
+    }
     let used = JSON.parse(localStorage.getItem(usedCardKey));
     let card = cardList.find(item => item.code === code && !used.includes(code));
     
@@ -581,12 +617,17 @@ function exchangeVipCard() {
     
     alert("VIP兑换成功！有效期30天");
     checkNowLogin();
+    initProfileInfo();
     goPage("profile");
 }
 
+// SVIP卡密兑换
 function exchangeSvipCard() {
-    // 原逻辑保持不变（如需同步Supabase可自行扩展）
     let code = document.getElementById("svipCardCode").value.trim();
+    if(!code){
+        alert("请输入SVIP卡密");
+        return;
+    }
     let used = JSON.parse(localStorage.getItem(usedCardKey));
     let card = svipCardList.find(item => item.code === code && !used.includes(code));
     
@@ -610,9 +651,11 @@ function exchangeSvipCard() {
     
     alert("SVIP兑换成功！永久有效");
     checkNowLogin();
+    initProfileInfo();
     goPage("profile");
 }
 
+// 随机卡密展示并跳转QQ
 function showRandCardAndJump() {
     let modal = document.getElementById("randCardModal");
     let codeEl = document.getElementById("showRandCode");
